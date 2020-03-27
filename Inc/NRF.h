@@ -12,4 +12,3 @@
 
 #endif /* NRF_H_ */
 
-int test1 = 1;
