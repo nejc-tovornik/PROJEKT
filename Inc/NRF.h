@@ -8,7 +8,4 @@
 #ifndef NRF_H_
 #define NRF_H_
 
-
-
 #endif /* NRF_H_ */
-
