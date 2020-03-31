@@ -1,4 +1,4 @@
 # PROJEKT PC->uC
 
-[ ] nRF24L01+ knjižnica
+[X] nRF24L01+ knjižnica
 
