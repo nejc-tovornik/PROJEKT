@@ -8,7 +8,7 @@
 // Functions to manage the nRF24L01+ transceiver
 
 #include "nRF24L01.h"
-
+/*
 // Read a register
 // input:
 //   reg - number of register to read
@@ -16,11 +16,7 @@
 static uint8_t nRF24_ReadReg(uint8_t reg) {
 	uint8_t value;
 
-	nRF24_CSN_L();
-	nRF24_LL_RW(reg & nRF24_MASK_REG_MAP);
 	value = nRF24_LL_RW(nRF24_CMD_NOP);
-	nRF24_CSN_H();
-
 	return value;
 }
 
@@ -514,10 +510,9 @@ void nRF24_WriteAckPayload(nRF24_RXResult pipe, char *payload, uint8_t length) {
 	while (length--) {
 		nRF24_LL_RW((uint8_t) *payload++);
 	}
-	nRF24_CSN_H();
 
 }
-
+*/
 /*
 // Print nRF24L01+ current configuration (for debug purposes)
 void nRF24_DumpConfig(void) {
