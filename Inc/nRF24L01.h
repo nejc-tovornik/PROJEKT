@@ -138,45 +138,47 @@ static const uint8_t nRF24_ADDR_REGS[7] = {
 };
 
 typedef struct {
-	SPI_TypeDef *hspi;
+	SPI_HandleTypeDef *hspi;
+	GPIO_TypeDef *CSN_GPIO_PORT;
+	uint16_t CSN_PIN;
 }NRF;
 
 // Function prototypes
-void nRF24_Init(void);
-uint8_t nRF24_Check(void);
+void nRF24_Init(NRF *dev);		//OK
+uint8_t nRF24_Check(NRF *dev);  //OK
 
-void nRF24_SetPowerMode(uint8_t mode);
-void nRF24_SetOperationalMode(uint8_t mode);
-void nRF24_SetRFChannel(uint8_t channel);
-void nRF24_SetAutoRetr(uint8_t ard, uint8_t arc);
-void nRF24_SetAddrWidth(uint8_t addr_width);
-void nRF24_SetAddr(uint8_t pipe, const uint8_t *addr);
-void nRF24_SetTXPower(uint8_t tx_pwr);
-void nRF24_SetDataRate(uint8_t data_rate);
-void nRF24_SetCRCScheme(uint8_t scheme);
-void nRF24_SetRXPipe(uint8_t pipe, uint8_t aa_state, uint8_t payload_len);
-void nRF24_ClosePipe(uint8_t pipe);
-void nRF24_EnableAA(uint8_t pipe);
-void nRF24_DisableAA(uint8_t pipe);
-void nRF24_SetDynamicPayloadLength(uint8_t mode);
-void nRF24_SetPayloadWithAck(uint8_t mode);
+void nRF24_SetPowerMode(NRF *dev, uint8_t mode); //OK
+void nRF24_SetOperationalMode(NRF *dev, uint8_t mode);//OK
+void nRF24_SetRFChannel(NRF *dev, uint8_t channel);
+void nRF24_SetAutoRetr(NRF *dev, uint8_t ard, uint8_t arc);
+void nRF24_SetAddrWidth(NRF *dev, uint8_t addr_width);
+void nRF24_SetAddr(NRF *dev, uint8_t pipe, const uint8_t *addr);
+void nRF24_SetTXPower(NRF *dev, uint8_t tx_pwr);
+void nRF24_SetDataRate(NRF *dev, uint8_t data_rate);
+void nRF24_SetCRCScheme(NRF *dev, uint8_t scheme);
+void nRF24_SetRXPipe(NRF *dev, uint8_t pipe, uint8_t aa_state, uint8_t payload_len);
+void nRF24_ClosePipe(NRF *dev, uint8_t pipe);
+void nRF24_EnableAA(NRF *dev, uint8_t pipe);
+void nRF24_DisableAA(NRF *dev, uint8_t pipe);
+void nRF24_SetDynamicPayloadLength(NRF *dev, uint8_t mode);
+void nRF24_SetPayloadWithAck(NRF *dev, uint8_t mode);
 
-uint8_t nRF24_GetStatus(void);
-uint8_t nRF24_GetIRQFlags(void);
-uint8_t nRF24_GetStatus_RXFIFO(void);
-uint8_t nRF24_GetStatus_TXFIFO(void);
-uint8_t nRF24_GetRXSource(void);
-uint8_t nRF24_GetRetransmitCounters(void);
-uint8_t nRF24_GetFeatures(void);
+uint8_t nRF24_GetStatus(NRF *dev);
+uint8_t nRF24_GetIRQFlags(NRF *dev);
+uint8_t nRF24_GetStatus_RXFIFO(NRF *dev);
+uint8_t nRF24_GetStatus_TXFIFO(NRF *dev);
+uint8_t nRF24_GetRXSource(NRF *dev);
+uint8_t nRF24_GetRetransmitCounters(NRF *dev);
+uint8_t nRF24_GetFeatures(NRF *dev);
 
-void nRF24_ResetPLOS(void);
-void nRF24_FlushTX(void);
-void nRF24_FlushRX(void);
-void nRF24_ClearIRQFlags(void);
-void nRF24_ActivateFeatures(void);
-void nRF24_WritePayload(uint8_t *pBuf, uint8_t length);
-void nRF24_WriteAckPayload(nRF24_RXResult pipe, char *payload, uint8_t length);
-nRF24_RXResult nRF24_ReadPayload(uint8_t *pBuf, uint8_t *length);
-nRF24_RXResult nRF24_ReadPayloadDpl(uint8_t *pBuf, uint8_t *length);
+void nRF24_ResetPLOS(NRF *dev);
+void nRF24_FlushTX(NRF *dev);      																//OK
+void nRF24_FlushRX(NRF *dev);      																//OK
+void nRF24_ClearIRQFlags(NRF *dev);     														//OK
+void nRF24_ActivateFeatures(NRF *dev);
+void nRF24_WritePayload(NRF *dev, uint8_t *pBuf, uint8_t length);
+void nRF24_WriteAckPayload(NRF *dev, nRF24_RXResult pipe, char *payload, uint8_t length);
+nRF24_RXResult nRF24_ReadPayload(NRF *dev, uint8_t *pBuf, uint8_t *length);
+nRF24_RXResult nRF24_ReadPayloadDpl(NRF *dev, uint8_t *pBuf, uint8_t *length);
 
 #endif /* NRF_H_ */
