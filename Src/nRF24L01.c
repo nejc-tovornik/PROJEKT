@@ -45,7 +45,7 @@ static void nRF24_WriteReg(NRF *dev, uint8_t reg, uint8_t value) {
 //   reg - number of register to read
 //   pBuf - pointer to the buffer for register data
 //   count - number of bytes to read
-static void nRF24_ReadMBReg(NRF *dev, uint8_t reg, uint8_t *pBuf, uint8_t count) {
+ void nRF24_ReadMBReg(NRF *dev, uint8_t reg, uint8_t *pBuf, uint8_t count) {
 	HAL_GPIO_WritePin(dev->CSN_GPIO_PORT, dev->CSN_PIN, GPIO_PIN_RESET);
 	HAL_SPI_Transmit(dev->hspi, &reg, 1, 100);
 	HAL_SPI_Receive(dev->hspi, pBuf, count, 100);
@@ -150,115 +150,117 @@ void nRF24_SetOperationalMode(NRF *dev, uint8_t mode) {
 // Set transceiver DynamicPayloadLength feature for all the pipes
 // input:
 //   mode - status, one of nRF24_DPL_xx values
-void nRF24_SetDynamicPayloadLength(uint8_t mode) {
+void nRF24_SetDynamicPayloadLength(NRF *dev, uint8_t mode) {
 	uint8_t reg;
-	reg = nRF24_ReadReg(nRF24_REG_FEATURE);
+	reg = nRF24_ReadReg(dev, nRF24_REG_FEATURE);
 	if (mode) {
-		nRF24_WriteReg(nRF24_REG_FEATURE, reg | nRF24_FEATURE_EN_DPL);
-		nRF24_WriteReg(nRF24_REG_DYNPD, 0x1F);
+		nRF24_WriteReg(dev, nRF24_REG_FEATURE, reg | nRF24_FEATURE_EN_DPL);
+		nRF24_WriteReg(dev, nRF24_REG_DYNPD, 0x1F);
 	} else {
-		nRF24_WriteReg(nRF24_REG_FEATURE, reg & ~ nRF24_FEATURE_EN_DPL);
-		nRF24_WriteReg(nRF24_REG_DYNPD, 0x0);
+		nRF24_WriteReg(dev, nRF24_REG_FEATURE, reg & ~ nRF24_FEATURE_EN_DPL);
+		nRF24_WriteReg(dev, nRF24_REG_DYNPD, 0x0);
+	}
+}
+
+// Enables Payload With Ack. NB Refer to the datasheet for proper retransmit timing.
+// input:
+//   mode - status, 1 or 0
+void nRF24_SetPayloadWithAck(NRF *dev, uint8_t mode) {
+	uint8_t reg;
+	reg = nRF24_ReadReg(dev, nRF24_REG_FEATURE);
+	if (mode) {
+		nRF24_WriteReg(dev, nRF24_REG_FEATURE, reg | nRF24_FEATURE_EN_ACK_PAY);
+	} else {
+		nRF24_WriteReg(dev, nRF24_REG_FEATURE,
+				reg & ~ nRF24_FEATURE_EN_ACK_PAY);
+	}
+}
+
+// Configure transceiver CRC scheme
+// input:
+//   scheme - CRC scheme, one of nRF24_CRC_xx values
+// note: transceiver will forcibly turn on the CRC in case if auto acknowledgment
+//       enabled for at least one RX pipe
+void nRF24_SetCRCScheme(NRF *dev, uint8_t scheme) {
+	uint8_t reg;
+
+	// Configure EN_CRC[3] and CRCO[2] bits of the CONFIG register
+	reg = nRF24_ReadReg(dev, nRF24_REG_CONFIG);
+	reg &= ~nRF24_MASK_CRC;
+	reg |= (scheme & nRF24_MASK_CRC );
+	nRF24_WriteReg(dev, nRF24_REG_CONFIG, reg);
+}
+
+// Set frequency channel
+// input:
+//   channel - radio frequency channel, value from 0 to 127
+// note: frequency will be (2400 + channel)MHz
+// note: PLOS_CNT[7:4] bits of the OBSERVER_TX register will be reset
+void nRF24_SetRFChannel(NRF *dev, uint8_t channel) {
+	nRF24_WriteReg(dev, nRF24_REG_RF_CH, channel);
+}
+
+// Set automatic retransmission parameters
+// input:
+//   ard - auto retransmit delay, one of nRF24_ARD_xx values
+//   arc - count of auto retransmits, value form 0 to 15
+// note: zero arc value means that the automatic retransmission disabled
+void nRF24_SetAutoRetr(NRF *dev, uint8_t ard, uint8_t arc) {
+	// Set auto retransmit settings (SETUP_RETR register)
+	nRF24_WriteReg(dev, nRF24_REG_SETUP_RETR,
+			(uint8_t) ((ard << 4) | (arc & nRF24_MASK_RETR_ARC )));
+}
+
+// Set of address widths
+// input:
+//   addr_width - RX/TX address field width, value from 3 to 5
+// note: this setting is common for all pipes
+void nRF24_SetAddrWidth(NRF *dev, uint8_t addr_width) {
+	nRF24_WriteReg(dev, nRF24_REG_SETUP_AW, addr_width - 2);
+}
+
+// Set static RX address for a specified pipe
+// input:
+//   pipe - pipe to configure address, one of nRF24_PIPEx values
+//   addr - pointer to the buffer with address
+// note: pipe can be a number from 0 to 5 (RX pipes) and 6 (TX pipe)
+// note: buffer length must be equal to current address width of transceiver
+// note: for pipes[2..5] only first byte of address will be written because
+//       other bytes of address equals to pipe1
+void nRF24_SetAddr(NRF *dev, uint8_t pipe, const uint8_t *addr) {
+	uint8_t addr_width, aw;
+	uint8_t txData[5];
+
+	// RX_ADDR_Px register
+	switch (pipe) {
+	case nRF24_PIPETX:
+	case nRF24_PIPE0:
+	case nRF24_PIPE1:
+		// Get address width
+		addr_width = nRF24_ReadReg(dev, nRF24_REG_SETUP_AW) + 1;
+		aw = addr_width;
+		// Write address in reverse order (LSByte first)
+		addr += addr_width;
+		//nRF24_LL_RW(nRF24_CMD_W_REGISTER | nRF24_ADDR_REGS[pipe]);
+		do {
+			txData[addr_width] = (*addr--);
+		} while (addr_width--);
+		nRF24_WriteMBReg(dev, nRF24_CMD_W_REGISTER | nRF24_ADDR_REGS[pipe],
+				txData, aw);
+		break;
+	case nRF24_PIPE2:
+	case nRF24_PIPE3:
+	case nRF24_PIPE4:
+	case nRF24_PIPE5:
+		// Write address LSBbyte (only first byte from the addr buffer)
+		nRF24_WriteReg(dev, nRF24_ADDR_REGS[pipe], *addr);
+		break;
+	default:
+		// Incorrect pipe number -> do nothing
+		break;
 	}
 }
 /*
- // Enables Payload With Ack. NB Refer to the datasheet for proper retransmit timing.
- // input:
- //   mode - status, 1 or 0
- void nRF24_SetPayloadWithAck(uint8_t mode) {
- uint8_t reg;
- reg  = nRF24_ReadReg(nRF24_REG_FEATURE);
- if(mode) {
- nRF24_WriteReg(nRF24_REG_FEATURE, reg | nRF24_FEATURE_EN_ACK_PAY);
- } else {
- nRF24_WriteReg(nRF24_REG_FEATURE, reg &~ nRF24_FEATURE_EN_ACK_PAY);
- }
- }
-
- // Configure transceiver CRC scheme
- // input:
- //   scheme - CRC scheme, one of nRF24_CRC_xx values
- // note: transceiver will forcibly turn on the CRC in case if auto acknowledgment
- //       enabled for at least one RX pipe
- void nRF24_SetCRCScheme(uint8_t scheme) {
- uint8_t reg;
-
- // Configure EN_CRC[3] and CRCO[2] bits of the CONFIG register
- reg  = nRF24_ReadReg(nRF24_REG_CONFIG);
- reg &= ~nRF24_MASK_CRC;
- reg |= (scheme & nRF24_MASK_CRC);
- nRF24_WriteReg(nRF24_REG_CONFIG, reg);
- }
-
- // Set frequency channel
- // input:
- //   channel - radio frequency channel, value from 0 to 127
- // note: frequency will be (2400 + channel)MHz
- // note: PLOS_CNT[7:4] bits of the OBSERVER_TX register will be reset
- void nRF24_SetRFChannel(uint8_t channel) {
- nRF24_WriteReg(nRF24_REG_RF_CH, channel);
- }
-
- // Set automatic retransmission parameters
- // input:
- //   ard - auto retransmit delay, one of nRF24_ARD_xx values
- //   arc - count of auto retransmits, value form 0 to 15
- // note: zero arc value means that the automatic retransmission disabled
- void nRF24_SetAutoRetr(uint8_t ard, uint8_t arc) {
- // Set auto retransmit settings (SETUP_RETR register)
- nRF24_WriteReg(nRF24_REG_SETUP_RETR, (uint8_t)((ard << 4) | (arc & nRF24_MASK_RETR_ARC)));
- }
-
- // Set of address widths
- // input:
- //   addr_width - RX/TX address field width, value from 3 to 5
- // note: this setting is common for all pipes
- void nRF24_SetAddrWidth(uint8_t addr_width) {
- nRF24_WriteReg(nRF24_REG_SETUP_AW, addr_width - 2);
- }
-
- // Set static RX address for a specified pipe
- // input:
- //   pipe - pipe to configure address, one of nRF24_PIPEx values
- //   addr - pointer to the buffer with address
- // note: pipe can be a number from 0 to 5 (RX pipes) and 6 (TX pipe)
- // note: buffer length must be equal to current address width of transceiver
- // note: for pipes[2..5] only first byte of address will be written because
- //       other bytes of address equals to pipe1
- // note: for pipes[2..5] only first byte of address will be written because
- //       pipes 1-5 share the four most significant address bytes
- void nRF24_SetAddr(uint8_t pipe, const uint8_t *addr) {
- uint8_t addr_width;
-
- // RX_ADDR_Px register
- switch (pipe) {
- case nRF24_PIPETX:
- case nRF24_PIPE0:
- case nRF24_PIPE1:
- // Get address width
- addr_width = nRF24_ReadReg(nRF24_REG_SETUP_AW) + 1;
- // Write address in reverse order (LSByte first)
- addr += addr_width;
- nRF24_CSN_L();
- nRF24_LL_RW(nRF24_CMD_W_REGISTER | nRF24_ADDR_REGS[pipe]);
- do {
- nRF24_LL_RW(*addr--);
- } while (addr_width--);
- nRF24_CSN_H();
- break;
- case nRF24_PIPE2:
- case nRF24_PIPE3:
- case nRF24_PIPE4:
- case nRF24_PIPE5:
- // Write address LSBbyte (only first byte from the addr buffer)
- nRF24_WriteReg(nRF24_ADDR_REGS[pipe], *addr);
- break;
- default:
- // Incorrect pipe number -> do nothing
- break;
- }
- }
-
  // Configure RF output power in TX mode
  // input:
  //   tx_pwr - RF output power, one of nRF24_TXPWR_xx values
