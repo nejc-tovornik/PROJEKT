@@ -45,7 +45,7 @@ static void nRF24_WriteReg(NRF *dev, uint8_t reg, uint8_t value) {
 //   reg - number of register to read
 //   pBuf - pointer to the buffer for register data
 //   count - number of bytes to read
- void nRF24_ReadMBReg(NRF *dev, uint8_t reg, uint8_t *pBuf, uint8_t count) {
+void nRF24_ReadMBReg(NRF *dev, uint8_t reg, uint8_t *pBuf, uint8_t count) {
 	HAL_GPIO_WritePin(dev->CSN_GPIO_PORT, dev->CSN_PIN, GPIO_PIN_RESET);
 	HAL_SPI_Transmit(dev->hspi, &reg, 1, 100);
 	HAL_SPI_Receive(dev->hspi, pBuf, count, 100);
@@ -260,147 +260,150 @@ void nRF24_SetAddr(NRF *dev, uint8_t pipe, const uint8_t *addr) {
 		break;
 	}
 }
-/*
- // Configure RF output power in TX mode
- // input:
- //   tx_pwr - RF output power, one of nRF24_TXPWR_xx values
- void nRF24_SetTXPower(uint8_t tx_pwr) {
- uint8_t reg;
 
- // Configure RF_PWR[2:1] bits of the RF_SETUP register
- reg  = nRF24_ReadReg(nRF24_REG_RF_SETUP);
- reg &= ~nRF24_MASK_RF_PWR;
- reg |= tx_pwr;
- nRF24_WriteReg(nRF24_REG_RF_SETUP, reg);
- }
+// Configure RF output power in TX mode
+// input:
+//   tx_pwr - RF output power, one of nRF24_TXPWR_xx values
+void nRF24_SetTXPower(NRF *dev, uint8_t tx_pwr) {
+	uint8_t reg;
 
- // Configure transceiver data rate
- // input:
- //   data_rate - data rate, one of nRF24_DR_xx values
- void nRF24_SetDataRate(uint8_t data_rate) {
- uint8_t reg;
+	// Configure RF_PWR[2:1] bits of the RF_SETUP register
+	reg = nRF24_ReadReg(dev, nRF24_REG_RF_SETUP);
+	reg &= ~nRF24_MASK_RF_PWR;
+	reg |= tx_pwr;
+	nRF24_WriteReg(dev, nRF24_REG_RF_SETUP, reg);
+}
 
- // Configure RF_DR_LOW[5] and RF_DR_HIGH[3] bits of the RF_SETUP register
- reg  = nRF24_ReadReg(nRF24_REG_RF_SETUP);
- reg &= ~nRF24_MASK_DATARATE;
- reg |= data_rate;
- nRF24_WriteReg(nRF24_REG_RF_SETUP, reg);
- }
+// Configure transceiver data rate
+// input:
+//   data_rate - data rate, one of nRF24_DR_xx values
+void nRF24_SetDataRate(NRF *dev, uint8_t data_rate) {
+	uint8_t reg;
 
- // Configure a specified RX pipe
- // input:
- //   pipe - number of the RX pipe, value from 0 to 5
- //   aa_state - state of auto acknowledgment, one of nRF24_AA_xx values
- //   payload_len - payload length in bytes
- void nRF24_SetRXPipe(uint8_t pipe, uint8_t aa_state, uint8_t payload_len) {
- uint8_t reg;
+	// Configure RF_DR_LOW[5] and RF_DR_HIGH[3] bits of the RF_SETUP register
+	reg = nRF24_ReadReg(dev, nRF24_REG_RF_SETUP);
+	reg &= ~nRF24_MASK_DATARATE;
+	reg |= data_rate;
+	nRF24_WriteReg(dev, nRF24_REG_RF_SETUP, reg);
+}
 
- // Enable the specified pipe (EN_RXADDR register)
- reg = (nRF24_ReadReg(nRF24_REG_EN_RXADDR) | (1 << pipe)) & nRF24_MASK_EN_RX;
- nRF24_WriteReg(nRF24_REG_EN_RXADDR, reg);
+// Configure a specified RX pipe
+// input:
+//   pipe - number of the RX pipe, value from 0 to 5
+//   aa_state - state of auto acknowledgment, one of nRF24_AA_xx values
+//   payload_len - payload length in bytes
+void nRF24_SetRXPipe(NRF *dev, uint8_t pipe, uint8_t aa_state,
+		uint8_t payload_len) {
+	uint8_t reg;
 
- // Set RX payload length (RX_PW_Px register)
- nRF24_WriteReg(nRF24_RX_PW_PIPE[pipe], payload_len & nRF24_MASK_RX_PW);
+	// Enable the specified pipe (EN_RXADDR register)
+	reg = (nRF24_ReadReg(dev, nRF24_REG_EN_RXADDR) | (1 << pipe))
+			& nRF24_MASK_EN_RX;
+	nRF24_WriteReg(dev, nRF24_REG_EN_RXADDR, reg);
 
- // Set auto acknowledgment for a specified pipe (EN_AA register)
- reg = nRF24_ReadReg(nRF24_REG_EN_AA);
- if (aa_state == nRF24_AA_ON) {
- reg |=  (1 << pipe);
- } else {
- reg &= ~(1 << pipe);
- }
- nRF24_WriteReg(nRF24_REG_EN_AA, reg);
- }
+	// Set RX payload length (RX_PW_Px register)
+	nRF24_WriteReg(dev, nRF24_RX_PW_PIPE[pipe], payload_len & nRF24_MASK_RX_PW);
 
- // Disable specified RX pipe
- // input:
- //   PIPE - number of RX pipe, value from 0 to 5
- void nRF24_ClosePipe(uint8_t pipe) {
- uint8_t reg;
+	// Set auto acknowledgment for a specified pipe (EN_AA register)
+	reg = nRF24_ReadReg(dev, nRF24_REG_EN_AA);
+	if (aa_state == nRF24_AA_ON) {
+		reg |= (1 << pipe);
+	} else {
+		reg &= ~(1 << pipe);
+	}
+	nRF24_WriteReg(dev, nRF24_REG_EN_AA, reg);
+}
 
- reg  = nRF24_ReadReg(nRF24_REG_EN_RXADDR);
- reg &= ~(1 << pipe);
- reg &= nRF24_MASK_EN_RX;
- nRF24_WriteReg(nRF24_REG_EN_RXADDR, reg);
- }
+// Disable specified RX pipe
+// input:
+//   PIPE - number of RX pipe, value from 0 to 5
+void nRF24_ClosePipe(NRF *dev, uint8_t pipe) {
+	uint8_t reg;
 
- // Enable the auto retransmit (a.k.a. enhanced ShockBurst) for the specified RX pipe
- // input:
- //   pipe - number of the RX pipe, value from 0 to 5
- void nRF24_EnableAA(uint8_t pipe) {
- uint8_t reg;
+	reg = nRF24_ReadReg(dev, nRF24_REG_EN_RXADDR);
+	reg &= ~(1 << pipe);
+	reg &= nRF24_MASK_EN_RX;
+	nRF24_WriteReg(dev, nRF24_REG_EN_RXADDR, reg);
+}
 
- // Set bit in EN_AA register
- reg  = nRF24_ReadReg(nRF24_REG_EN_AA);
- reg |= (1 << pipe);
- nRF24_WriteReg(nRF24_REG_EN_AA, reg);
- }
+// Enable the auto retransmit (a.k.a. enhanced ShockBurst) for the specified RX pipe
+// input:
+//   pipe - number of the RX pipe, value from 0 to 5
+void nRF24_EnableAA(NRF *dev, uint8_t pipe) {
+	uint8_t reg;
 
- // Disable the auto retransmit (a.k.a. enhanced ShockBurst) for one or all RX pipes
- // input:
- //   pipe - number of the RX pipe, value from 0 to 5, any other value will disable AA for all RX pipes
- void nRF24_DisableAA(uint8_t pipe) {
- uint8_t reg;
+	// Set bit in EN_AA register
+	reg = nRF24_ReadReg(dev, nRF24_REG_EN_AA);
+	reg |= (1 << pipe);
+	nRF24_WriteReg(dev, nRF24_REG_EN_AA, reg);
+}
 
- if (pipe > 5) {
- // Disable Auto-ACK for ALL pipes
- nRF24_WriteReg(nRF24_REG_EN_AA, 0x00);
- } else {
- // Clear bit in the EN_AA register
- reg  = nRF24_ReadReg(nRF24_REG_EN_AA);
- reg &= ~(1 << pipe);
- nRF24_WriteReg(nRF24_REG_EN_AA, reg);
- }
- }
+// Disable the auto retransmit (a.k.a. enhanced ShockBurst) for one or all RX pipes
+// input:
+//   pipe - number of the RX pipe, value from 0 to 5, any other value will disable AA for all RX pipes
+void nRF24_DisableAA(NRF *dev, uint8_t pipe) {
+	uint8_t reg;
 
- // Get value of the STATUS register
- // return: value of STATUS register
- uint8_t nRF24_GetStatus(void) {
- return nRF24_ReadReg(nRF24_REG_STATUS);
- }
+	if (pipe > 5) {
+		// Disable Auto-ACK for ALL pipes
+		nRF24_WriteReg(dev, nRF24_REG_EN_AA, 0x00);
+	} else {
+		// Clear bit in the EN_AA register
+		reg = nRF24_ReadReg(dev, nRF24_REG_EN_AA);
+		reg &= ~(1 << pipe);
+		nRF24_WriteReg(dev, nRF24_REG_EN_AA, reg);
+	}
+}
 
- // Get pending IRQ flags
- // return: current status of RX_DR, TX_DS and MAX_RT bits of the STATUS register
- uint8_t nRF24_GetIRQFlags(void) {
- return (nRF24_ReadReg(nRF24_REG_STATUS) & nRF24_MASK_STATUS_IRQ);
- }
+// Get value of the STATUS register
+// return: value of STATUS register
+uint8_t nRF24_GetStatus(NRF *dev) {
+	return nRF24_ReadReg(dev, nRF24_REG_STATUS);
+}
 
- // Get status of the RX FIFO
- // return: one of the nRF24_STATUS_RXFIFO_xx values
- uint8_t nRF24_GetStatus_RXFIFO(void) {
- return (nRF24_ReadReg(nRF24_REG_FIFO_STATUS) & nRF24_MASK_RXFIFO);
- }
+// Get pending IRQ flags
+// return: current status of RX_DR, TX_DS and MAX_RT bits of the STATUS register
+uint8_t nRF24_GetIRQFlags(NRF *dev) {
+	return (nRF24_ReadReg(dev, nRF24_REG_STATUS) & nRF24_MASK_STATUS_IRQ );
+}
 
- // Get status of the TX FIFO
- // return: one of the nRF24_STATUS_TXFIFO_xx values
- // note: the TX_REUSE bit ignored
- uint8_t nRF24_GetStatus_TXFIFO(void) {
- return ((nRF24_ReadReg(nRF24_REG_FIFO_STATUS) & nRF24_MASK_TXFIFO) >> 4);
- }
+// Get status of the RX FIFO
+// return: one of the nRF24_STATUS_RXFIFO_xx values
+uint8_t nRF24_GetStatus_RXFIFO(NRF *dev) {
+	return (nRF24_ReadReg(dev, nRF24_REG_FIFO_STATUS) & nRF24_MASK_RXFIFO );
+}
 
- // Get pipe number for the payload available for reading from RX FIFO
- // return: pipe number or 0x07 if the RX FIFO is empty
- uint8_t nRF24_GetRXSource(void) {
- return ((nRF24_ReadReg(nRF24_REG_STATUS) & nRF24_MASK_RX_P_NO) >> 1);
- }
+// Get status of the TX FIFO
+// return: one of the nRF24_STATUS_TXFIFO_xx values
+// note: the TX_REUSE bit ignored
+uint8_t nRF24_GetStatus_TXFIFO(NRF *dev) {
+	return ((nRF24_ReadReg(dev, nRF24_REG_FIFO_STATUS) & nRF24_MASK_TXFIFO )
+			>> 4);
+}
 
- // Get auto retransmit statistic
- // return: value of OBSERVE_TX register which contains two counters encoded in nibbles:
- //   high - lost packets count (max value 15, can be reseted by write to RF_CH register)
- //   low  - retransmitted packets count (max value 15, reseted when new transmission starts)
- uint8_t nRF24_GetRetransmitCounters(void) {
- return (nRF24_ReadReg(nRF24_REG_OBSERVE_TX));
- }
+// Get pipe number for the payload available for reading from RX FIFO
+// return: pipe number or 0x07 if the RX FIFO is empty
+uint8_t nRF24_GetRXSource(NRF *dev) {
+	return ((nRF24_ReadReg(dev, nRF24_REG_STATUS) & nRF24_MASK_RX_P_NO ) >> 1);
+}
 
- // Reset packet lost counter (PLOS_CNT bits in OBSERVER_TX register)
- void nRF24_ResetPLOS(void) {
- uint8_t reg;
+// Get auto retransmit statistic
+// return: value of OBSERVE_TX register which contains two counters encoded in nibbles:
+//   high - lost packets count (max value 15, can be reseted by write to RF_CH register)
+//   low  - retransmitted packets count (max value 15, reseted when new transmission starts)
+uint8_t nRF24_GetRetransmitCounters(NRF *dev) {
+	return (nRF24_ReadReg(dev, nRF24_REG_OBSERVE_TX));
+}
 
- // The PLOS counter is reset after write to RF_CH register
- reg = nRF24_ReadReg(nRF24_REG_RF_CH);
- nRF24_WriteReg(nRF24_REG_RF_CH, reg);
- }
- */
+// Reset packet lost counter (PLOS_CNT bits in OBSERVER_TX register)
+void nRF24_ResetPLOS(NRF *dev) {
+	uint8_t reg;
+
+	// The PLOS counter is reset after write to RF_CH register
+	reg = nRF24_ReadReg(dev, nRF24_REG_RF_CH);
+	nRF24_WriteReg(dev, nRF24_REG_RF_CH, reg);
+}
+
 // Flush the TX FIFO
 void nRF24_FlushTX(NRF *dev) {
 	nRF24_WriteReg(dev, nRF24_CMD_FLUSH_TX, nRF24_CMD_NOP);
@@ -420,60 +423,61 @@ void nRF24_ClearIRQFlags(NRF *dev) {
 	reg |= nRF24_MASK_STATUS_IRQ;
 	nRF24_WriteReg(dev, nRF24_REG_STATUS, reg);
 }
+
+// Write TX payload
+// input:
+//   pBuf - pointer to the buffer with payload data
+//   length - payload length in bytes
+void nRF24_WritePayload(NRF *dev, uint8_t *pBuf, uint8_t length) {
+	nRF24_WriteMBReg(dev,nRF24_CMD_W_TX_PAYLOAD, pBuf, length);
+}
+
+static uint8_t nRF24_GetRxDplPayloadWidth() {
+	uint8_t value;
+
+	nRF24_CSN_L();
+	nRF24_LL_RW(nRF24_CMD_R_RX_PL_WID);
+	value = nRF24_LL_RW(nRF24_CMD_NOP);
+	nRF24_CSN_H();
+
+	return value;
+
+}
+
+static nRF24_RXResult nRF24_ReadPayloadGeneric(NRF *dev, uint8_t *pBuf,
+		uint8_t *length, uint8_t dpl) {
+	uint8_t pipe;
+
+	// Extract a payload pipe number from the STATUS register
+	pipe = (nRF24_ReadReg(dev,nRF24_REG_STATUS) & nRF24_MASK_RX_P_NO ) >> 1;
+
+	// RX FIFO empty?
+	if (pipe < 6) {
+		// Get payload length
+		if (dpl) {
+			*length = nRF24_GetRxDplPayloadWidth();
+			if (*length > 32) { //broken packet
+				*length = 0;
+				nRF24_FlushRX(dev);
+			}
+		} else {
+			*length = nRF24_ReadReg(dev,nRF24_RX_PW_PIPE[pipe]);
+		}
+
+		// Read a payload from the RX FIFO
+		if (*length) {
+			nRF24_ReadMBReg(dev,nRF24_CMD_R_RX_PAYLOAD, pBuf, *length);
+		}
+
+		return ((nRF24_RXResult) pipe);
+	}
+
+	// The RX FIFO is empty
+	*length = 0;
+
+	return nRF24_RX_EMPTY;
+}
 /*
- // Write TX payload
- // input:
- //   pBuf - pointer to the buffer with payload data
- //   length - payload length in bytes
- void nRF24_WritePayload(uint8_t *pBuf, uint8_t length) {
- nRF24_WriteMBReg(nRF24_CMD_W_TX_PAYLOAD, pBuf, length);
- }
-
- static uint8_t nRF24_GetRxDplPayloadWidth() {
- uint8_t value;
-
- nRF24_CSN_L();
- nRF24_LL_RW(nRF24_CMD_R_RX_PL_WID);
- value = nRF24_LL_RW(nRF24_CMD_NOP);
- nRF24_CSN_H();
-
- return value;
-
- }
-
- static nRF24_RXResult nRF24_ReadPayloadGeneric(uint8_t *pBuf, uint8_t *length, uint8_t dpl) {
- uint8_t pipe;
-
- // Extract a payload pipe number from the STATUS register
- pipe = (nRF24_ReadReg(nRF24_REG_STATUS) & nRF24_MASK_RX_P_NO) >> 1;
-
- // RX FIFO empty?
- if (pipe < 6) {
- // Get payload length
- if(dpl) {
- *length = nRF24_GetRxDplPayloadWidth();
- if(*length>32) { //broken packet
- *length = 0;
- nRF24_FlushRX();
- }
- } else {
- *length = nRF24_ReadReg(nRF24_RX_PW_PIPE[pipe]);
- }
-
- // Read a payload from the RX FIFO
- if (*length) {
- nRF24_ReadMBReg(nRF24_CMD_R_RX_PAYLOAD, pBuf, *length);
- }
-
- return ((nRF24_RXResult)pipe);
- }
-
- // The RX FIFO is empty
- *length = 0;
-
- return nRF24_RX_EMPTY;
- }
-
  // Read top level payload available in the RX FIFO
  // input:
  //   pBuf - pointer to the buffer to store a payload data
