@@ -144,11 +144,11 @@ typedef struct {
 }NRF;
 
 // Function prototypes
-void nRF24_Init(NRF *dev);		//OK
-uint8_t nRF24_Check(NRF *dev);  //OK
+void nRF24_Init(NRF *dev);
+uint8_t nRF24_Check(NRF *dev);
 
-void nRF24_SetPowerMode(NRF *dev, uint8_t mode); //OK
-void nRF24_SetOperationalMode(NRF *dev, uint8_t mode);//OK
+void nRF24_SetPowerMode(NRF *dev, uint8_t mode);
+void nRF24_SetOperationalMode(NRF *dev, uint8_t mode);
 void nRF24_SetRFChannel(NRF *dev, uint8_t channel);
 void nRF24_SetAutoRetr(NRF *dev, uint8_t ard, uint8_t arc);
 void nRF24_SetAddrWidth(NRF *dev, uint8_t addr_width);
@@ -172,9 +172,9 @@ uint8_t nRF24_GetRetransmitCounters(NRF *dev);
 uint8_t nRF24_GetFeatures(NRF *dev);
 
 void nRF24_ResetPLOS(NRF *dev);
-void nRF24_FlushTX(NRF *dev);      																//OK
-void nRF24_FlushRX(NRF *dev);      																//OK
-void nRF24_ClearIRQFlags(NRF *dev);     														//OK
+void nRF24_FlushTX(NRF *dev);
+void nRF24_FlushRX(NRF *dev);
+void nRF24_ClearIRQFlags(NRF *dev);
 void nRF24_ActivateFeatures(NRF *dev);
 void nRF24_WritePayload(NRF *dev, uint8_t *pBuf, uint8_t length);
 void nRF24_WriteAckPayload(NRF *dev, nRF24_RXResult pipe, char *payload, uint8_t length);

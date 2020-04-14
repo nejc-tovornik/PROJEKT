@@ -429,19 +429,13 @@ void nRF24_ClearIRQFlags(NRF *dev) {
 //   pBuf - pointer to the buffer with payload data
 //   length - payload length in bytes
 void nRF24_WritePayload(NRF *dev, uint8_t *pBuf, uint8_t length) {
-	nRF24_WriteMBReg(dev,nRF24_CMD_W_TX_PAYLOAD, pBuf, length);
+	nRF24_WriteMBReg(dev, nRF24_CMD_W_TX_PAYLOAD, pBuf, length);
 }
 
-static uint8_t nRF24_GetRxDplPayloadWidth() {
+static uint8_t nRF24_GetRxDplPayloadWidth(NRF *dev) {
 	uint8_t value;
-
-	nRF24_CSN_L();
-	nRF24_LL_RW(nRF24_CMD_R_RX_PL_WID);
-	value = nRF24_LL_RW(nRF24_CMD_NOP);
-	nRF24_CSN_H();
-
+	value = nRF24_ReadReg(dev, nRF24_CMD_R_RX_PL_WID);
 	return value;
-
 }
 
 static nRF24_RXResult nRF24_ReadPayloadGeneric(NRF *dev, uint8_t *pBuf,
@@ -449,24 +443,24 @@ static nRF24_RXResult nRF24_ReadPayloadGeneric(NRF *dev, uint8_t *pBuf,
 	uint8_t pipe;
 
 	// Extract a payload pipe number from the STATUS register
-	pipe = (nRF24_ReadReg(dev,nRF24_REG_STATUS) & nRF24_MASK_RX_P_NO ) >> 1;
+	pipe = (nRF24_ReadReg(dev, nRF24_REG_STATUS) & nRF24_MASK_RX_P_NO ) >> 1;
 
 	// RX FIFO empty?
 	if (pipe < 6) {
 		// Get payload length
 		if (dpl) {
-			*length = nRF24_GetRxDplPayloadWidth();
+			*length = nRF24_GetRxDplPayloadWidth(dev);
 			if (*length > 32) { //broken packet
 				*length = 0;
 				nRF24_FlushRX(dev);
 			}
 		} else {
-			*length = nRF24_ReadReg(dev,nRF24_RX_PW_PIPE[pipe]);
+			*length = nRF24_ReadReg(dev, nRF24_RX_PW_PIPE[pipe]);
 		}
 
 		// Read a payload from the RX FIFO
 		if (*length) {
-			nRF24_ReadMBReg(dev,nRF24_CMD_R_RX_PAYLOAD, pBuf, *length);
+			nRF24_ReadMBReg(dev, nRF24_CMD_R_RX_PAYLOAD, pBuf, *length);
 		}
 
 		return ((nRF24_RXResult) pipe);
@@ -477,41 +471,46 @@ static nRF24_RXResult nRF24_ReadPayloadGeneric(NRF *dev, uint8_t *pBuf,
 
 	return nRF24_RX_EMPTY;
 }
+
+// Read top level payload available in the RX FIFO
+// input:
+//   pBuf - pointer to the buffer to store a payload data
+//   length - pointer to variable to store a payload length
+// return: one of nRF24_RX_xx values
+//   nRF24_RX_PIPEX - packet has been received from the pipe number X
+//   nRF24_RX_EMPTY - the RX FIFO is empty
+nRF24_RXResult nRF24_ReadPayload(NRF *dev, uint8_t *pBuf, uint8_t *length) {
+	return nRF24_ReadPayloadGeneric(dev, pBuf, length, 0);
+}
+
+nRF24_RXResult nRF24_ReadPayloadDpl(NRF *dev, uint8_t *pBuf, uint8_t *length) {
+	return nRF24_ReadPayloadGeneric(dev, pBuf, length, 1);
+}
+
+uint8_t nRF24_GetFeatures(NRF *dev) {
+	return nRF24_ReadReg(dev, nRF24_REG_FEATURE);
+}
 /*
- // Read top level payload available in the RX FIFO
- // input:
- //   pBuf - pointer to the buffer to store a payload data
- //   length - pointer to variable to store a payload length
- // return: one of nRF24_RX_xx values
- //   nRF24_RX_PIPEX - packet has been received from the pipe number X
- //   nRF24_RX_EMPTY - the RX FIFO is empty
- nRF24_RXResult nRF24_ReadPayload(uint8_t *pBuf, uint8_t *length) {
- return nRF24_ReadPayloadGeneric(pBuf, length,0);
- }
+void nRF24_ActivateFeatures(NRF *dev) {
 
- nRF24_RXResult nRF24_ReadPayloadDpl(uint8_t *pBuf, uint8_t *length) {
- return nRF24_ReadPayloadGeneric(pBuf, length,1);
- }
+	nRF24_WriteMBReg(dev, nRF24_CMD_ACTIVATE, (uint8_t *)0x73, 1);
 
- uint8_t nRF24_GetFeatures() {
- return nRF24_ReadReg(nRF24_REG_FEATURE);
- }
- void nRF24_ActivateFeatures() {
- nRF24_CSN_L();
- nRF24_LL_RW(nRF24_CMD_ACTIVATE);
- nRF24_LL_RW(0x73);
- nRF24_CSN_H();
- }
- void nRF24_WriteAckPayload(nRF24_RXResult pipe, char *payload, uint8_t length) {
- nRF24_CSN_L();
- nRF24_LL_RW(nRF24_CMD_W_ACK_PAYLOAD | pipe);
- while (length--) {
- nRF24_LL_RW((uint8_t) *payload++);
- }
- nRF24_CSN_H();
+	nRF24_CSN_L();
+	nRF24_LL_RW(nRF24_CMD_ACTIVATE);
+	nRF24_LL_RW(0x73);
+	nRF24_CSN_H();
+}
+void nRF24_WriteAckPayload(NRF *dev, nRF24_RXResult pipe, char *payload,
+		uint8_t length) {
+	nRF24_CSN_L();
+	nRF24_LL_RW(nRF24_CMD_W_ACK_PAYLOAD | pipe);
+	while (length--) {
+		nRF24_LL_RW((uint8_t) *payload++);
+	}
+	nRF24_CSN_H();
 
- }
- */
+}
+*/
 /*
  // Print nRF24L01+ current configuration (for debug purposes)
  void nRF24_DumpConfig(void) {
