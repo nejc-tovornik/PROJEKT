@@ -1,184 +1,113 @@
 /*
- * nRF24L01.h
- *
- *  Created on: Mar 27, 2020
- *      Author: Nejc
- */
+Library:				NRF24L01 software library for STM32 MCUs
+Written by:			Mohamed Yaqoob
+Date written:		25/10/2018
+Last modified:	-/-
+Description:
 
-#ifndef NRF_H_
-#define NRF_H_
+*/
 
-#include "stm32f7xx.h"
-#include "nRF24L01_RegMap.h"
+#define _BV(x) (1<<(x))
 
-// Retransmit delay
-enum {
-	nRF24_ARD_NONE   = (uint8_t)0x00, // Dummy value for case when retransmission is not used
-	nRF24_ARD_250us  = (uint8_t)0x00,
-	nRF24_ARD_500us  = (uint8_t)0x01,
-	nRF24_ARD_750us  = (uint8_t)0x02,
-	nRF24_ARD_1000us = (uint8_t)0x03,
-	nRF24_ARD_1250us = (uint8_t)0x04,
-	nRF24_ARD_1500us = (uint8_t)0x05,
-	nRF24_ARD_1750us = (uint8_t)0x06,
-	nRF24_ARD_2000us = (uint8_t)0x07,
-	nRF24_ARD_2250us = (uint8_t)0x08,
-	nRF24_ARD_2500us = (uint8_t)0x09,
-	nRF24_ARD_2750us = (uint8_t)0x0A,
-	nRF24_ARD_3000us = (uint8_t)0x0B,
-	nRF24_ARD_3250us = (uint8_t)0x0C,
-	nRF24_ARD_3500us = (uint8_t)0x0D,
-	nRF24_ARD_3750us = (uint8_t)0x0E,
-	nRF24_ARD_4000us = (uint8_t)0x0F
-};
+/* Memory Map */
+#define REG_CONFIG      0x00
+#define REG_EN_AA       0x01
+#define REG_EN_RXADDR   0x02
+#define REG_SETUP_AW    0x03
+#define REG_SETUP_RETR  0x04
+#define REG_RF_CH       0x05
+#define REG_RF_SETUP    0x06
+#define REG_STATUS      0x07
+#define REG_OBSERVE_TX  0x08
+#define REG_CD          0x09
+#define REG_RX_ADDR_P0  0x0A
+#define REG_RX_ADDR_P1  0x0B
+#define REG_RX_ADDR_P2  0x0C
+#define REG_RX_ADDR_P3  0x0D
+#define REG_RX_ADDR_P4  0x0E
+#define REG_RX_ADDR_P5  0x0F
+#define REG_TX_ADDR     0x10
+#define REG_RX_PW_P0    0x11
+#define REG_RX_PW_P1    0x12
+#define REG_RX_PW_P2    0x13
+#define REG_RX_PW_P3    0x14
+#define REG_RX_PW_P4    0x15
+#define REG_RX_PW_P5    0x16
+#define REG_FIFO_STATUS 0x17
+#define REG_DYNPD	    	0x1C
+#define REG_FEATURE	    0x1D
 
-// Data rate
-enum {
-	nRF24_DR_250kbps = (uint8_t)0x20, // 250kbps data rate
-	nRF24_DR_1Mbps   = (uint8_t)0x00, // 1Mbps data rate
-	nRF24_DR_2Mbps   = (uint8_t)0x08  // 2Mbps data rate
-};
+/* Bit Mnemonics */
+#define MASK_RX_DR  6
+#define MASK_TX_DS  5
+#define MASK_MAX_RT 4
+#define BIT_EN_CRC      3
+#define BIT_CRCO        2
+#define BIT_PWR_UP      1
+#define BIT_PRIM_RX     0
+#define BIT_ENAA_P5     5
+#define BIT_ENAA_P4     4
+#define BIT_ENAA_P3     3
+#define BIT_ENAA_P2     2
+#define BIT_ENAA_P1     1
+#define BIT_ENAA_P0     0
+#define BIT_ERX_P5      5
+#define BIT_ERX_P4      4
+#define BIT_ERX_P3      3
+#define BIT_ERX_P2      2
+#define BIT_ERX_P1      1
+#define BIT_ERX_P0      0
+#define BIT_AW          0
+#define BIT_ARD         4
+#define BIT_ARC         0
+#define BIT_PLL_LOCK    4
+#define BIT_RF_DR       3
+#define BIT_RF_PWR      6
+#define BIT_RX_DR       6
+#define BIT_TX_DS       5
+#define BIT_MAX_RT      4
+#define BIT_RX_P_NO     1
+#define BIT_TX_FULL     0
+#define BIT_PLOS_CNT    4
+#define BIT_ARC_CNT     0
+#define BIT_TX_REUSE    6
+#define BIT_FIFO_FULL   5
+#define BIT_TX_EMPTY    4
+#define BIT_RX_FULL     1
+#define BIT_RX_EMPTY    0
+#define BIT_DPL_P5	    5
+#define BIT_DPL_P4	    4
+#define BIT_DPL_P3	    3
+#define BIT_DPL_P2	    2
+#define BIT_DPL_P1	    1
+#define BIT_DPL_P0	    0
+#define BIT_EN_DPL	    2
+#define BIT_EN_ACK_PAY  1
+#define BIT_EN_DYN_ACK  0
 
-// RF output power in TX mode
-enum {
-	nRF24_TXPWR_18dBm = (uint8_t)0x00, // -18dBm
-	nRF24_TXPWR_12dBm = (uint8_t)0x02, // -12dBm
-	nRF24_TXPWR_6dBm  = (uint8_t)0x04, //  -6dBm
-	nRF24_TXPWR_0dBm  = (uint8_t)0x06  //   0dBm
-};
+/* Instruction Mnemonics */
+#define CMD_R_REGISTER    0x00
+#define CMD_W_REGISTER    0x20
+#define CMD_REGISTER_MASK 0x1F
+#define CMD_ACTIVATE      0x50
+#define CMD_R_RX_PL_WID   0x60
+#define CMD_R_RX_PAYLOAD  0x61
+#define CMD_W_TX_PAYLOAD  0xA0
+#define CMD_W_ACK_PAYLOAD 0xA8
+#define CMD_FLUSH_TX      0xE1
+#define CMD_FLUSH_RX      0xE2
+#define CMD_REUSE_TX_PL   0xE3
+#define CMD_NOP           0xFF
 
-// CRC encoding scheme
-enum {
-	nRF24_CRC_off   = (uint8_t)0x00, // CRC disabled
-	nRF24_CRC_1byte = (uint8_t)0x08, // 1-byte CRC
-	nRF24_CRC_2byte = (uint8_t)0x0c  // 2-byte CRC
-};
+/* Non-P omissions */
+#define LNA_HCURR   0
 
-// nRF24L01 power control
-enum {
-	nRF24_PWR_UP   = (uint8_t)0x02, // Power up
-	nRF24_PWR_DOWN = (uint8_t)0x00  // Power down
-};
+/* P model memory Map */
+#define REG_RPD         0x09
 
-// Transceiver mode
-enum {
-	nRF24_MODE_RX = (uint8_t)0x01, // PRX
-	nRF24_MODE_TX = (uint8_t)0x00  // PTX
-};
+/* P model bit Mnemonics */
+#define RF_DR_LOW   5
+#define RF_DR_HIGH  3
+#define RF_PWR_LOW  1
+#define RF_PWR_HIGH 2
 
-enum {
-	nRF24_DPL_ON = (uint8_t)0x01, // PRX
-	nRF24_DPL_OFF = (uint8_t)0x00  // PTX
-} ;
-
-// Enumeration of RX pipe addresses and TX address
-enum {
-	nRF24_PIPE0  = (uint8_t)0x00, // pipe0
-	nRF24_PIPE1  = (uint8_t)0x01, // pipe1
-	nRF24_PIPE2  = (uint8_t)0x02, // pipe2
-	nRF24_PIPE3  = (uint8_t)0x03, // pipe3
-	nRF24_PIPE4  = (uint8_t)0x04, // pipe4
-	nRF24_PIPE5  = (uint8_t)0x05, // pipe5
-	nRF24_PIPETX = (uint8_t)0x06  // TX address (not a pipe in fact)
-};
-
-// State of auto acknowledgment for specified pipe
-enum {
-	nRF24_AA_OFF = (uint8_t)0x00,
-	nRF24_AA_ON  = (uint8_t)0x01
-};
-
-// Status of the RX FIFO
-enum {
-	nRF24_STATUS_RXFIFO_DATA  = (uint8_t)0x00, // The RX FIFO contains data and available locations
-	nRF24_STATUS_RXFIFO_EMPTY = (uint8_t)0x01, // The RX FIFO is empty
-	nRF24_STATUS_RXFIFO_FULL  = (uint8_t)0x02, // The RX FIFO is full
-	nRF24_STATUS_RXFIFO_ERROR = (uint8_t)0x03  // Impossible state: RX FIFO cannot be empty and full at the same time
-};
-
-// Status of the TX FIFO
-enum {
-	nRF24_STATUS_TXFIFO_DATA  = (uint8_t)0x00, // The TX FIFO contains data and available locations
-	nRF24_STATUS_TXFIFO_EMPTY = (uint8_t)0x01, // The TX FIFO is empty
-	nRF24_STATUS_TXFIFO_FULL  = (uint8_t)0x02, // The TX FIFO is full
-	nRF24_STATUS_TXFIFO_ERROR = (uint8_t)0x03  // Impossible state: TX FIFO cannot be empty and full at the same time
-};
-
-// Result of RX FIFO reading
-typedef enum {
-	nRF24_RX_PIPE0  = (uint8_t)0x00, // Packet received from the PIPE#0
-	nRF24_RX_PIPE1  = (uint8_t)0x01, // Packet received from the PIPE#1
-	nRF24_RX_PIPE2  = (uint8_t)0x02, // Packet received from the PIPE#2
-	nRF24_RX_PIPE3  = (uint8_t)0x03, // Packet received from the PIPE#3
-	nRF24_RX_PIPE4  = (uint8_t)0x04, // Packet received from the PIPE#4
-	nRF24_RX_PIPE5  = (uint8_t)0x05, // Packet received from the PIPE#5
-	nRF24_RX_EMPTY  = (uint8_t)0xff  // The RX FIFO is empty
-} nRF24_RXResult;
-
-
-// Addresses of the RX_PW_P# registers
-static const uint8_t nRF24_RX_PW_PIPE[6] = {
-		nRF24_REG_RX_PW_P0,
-		nRF24_REG_RX_PW_P1,
-		nRF24_REG_RX_PW_P2,
-		nRF24_REG_RX_PW_P3,
-		nRF24_REG_RX_PW_P4,
-		nRF24_REG_RX_PW_P5
-};
-
-// Addresses of the address registers
-static const uint8_t nRF24_ADDR_REGS[7] = {
-		nRF24_REG_RX_ADDR_P0,
-		nRF24_REG_RX_ADDR_P1,
-		nRF24_REG_RX_ADDR_P2,
-		nRF24_REG_RX_ADDR_P3,
-		nRF24_REG_RX_ADDR_P4,
-		nRF24_REG_RX_ADDR_P5,
-		nRF24_REG_TX_ADDR
-};
-
-typedef struct {
-	SPI_HandleTypeDef *hspi;
-	GPIO_TypeDef *CSN_GPIO_PORT;
-	uint16_t CSN_PIN;
-}NRF;
-
-// Function prototypes
-void nRF24_Init(NRF *dev);
-uint8_t nRF24_Check(NRF *dev);
-
-void nRF24_SetPowerMode(NRF *dev, uint8_t mode);
-void nRF24_SetOperationalMode(NRF *dev, uint8_t mode);
-void nRF24_SetRFChannel(NRF *dev, uint8_t channel);
-void nRF24_SetAutoRetr(NRF *dev, uint8_t ard, uint8_t arc);
-void nRF24_SetAddrWidth(NRF *dev, uint8_t addr_width);
-void nRF24_SetAddr(NRF *dev, uint8_t pipe, const uint8_t *addr);
-void nRF24_SetTXPower(NRF *dev, uint8_t tx_pwr);
-void nRF24_SetDataRate(NRF *dev, uint8_t data_rate);
-void nRF24_SetCRCScheme(NRF *dev, uint8_t scheme);
-void nRF24_SetRXPipe(NRF *dev, uint8_t pipe, uint8_t aa_state, uint8_t payload_len);
-void nRF24_ClosePipe(NRF *dev, uint8_t pipe);
-void nRF24_EnableAA(NRF *dev, uint8_t pipe);
-void nRF24_DisableAA(NRF *dev, uint8_t pipe);
-void nRF24_SetDynamicPayloadLength(NRF *dev, uint8_t mode);
-void nRF24_SetPayloadWithAck(NRF *dev, uint8_t mode);
-
-uint8_t nRF24_GetStatus(NRF *dev);
-uint8_t nRF24_GetIRQFlags(NRF *dev);
-uint8_t nRF24_GetStatus_RXFIFO(NRF *dev);
-uint8_t nRF24_GetStatus_TXFIFO(NRF *dev);
-uint8_t nRF24_GetRXSource(NRF *dev);
-uint8_t nRF24_GetRetransmitCounters(NRF *dev);
-uint8_t nRF24_GetFeatures(NRF *dev);
-
-void nRF24_ResetPLOS(NRF *dev);
-void nRF24_FlushTX(NRF *dev);
-void nRF24_FlushRX(NRF *dev);
-void nRF24_ClearIRQFlags(NRF *dev);
-void nRF24_ActivateFeatures(NRF *dev);
-void nRF24_WritePayload(NRF *dev, uint8_t *pBuf, uint8_t length);
-void nRF24_WriteAckPayload(NRF *dev, nRF24_RXResult pipe, char *payload, uint8_t length);
-nRF24_RXResult nRF24_ReadPayload(NRF *dev, uint8_t *pBuf, uint8_t *length);
-nRF24_RXResult nRF24_ReadPayloadDpl(NRF *dev, uint8_t *pBuf, uint8_t *length);
-
-#endif /* NRF_H_ */
