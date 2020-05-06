@@ -14,8 +14,8 @@
 typedef struct {
 	uint8_t ID;
 	uint16_t Azimuth;
-	uint8_t X;
-	uint8_t Y;
+	uint16_t X;
+	uint16_t Y;
 }Robot;
 
 typedef enum {
